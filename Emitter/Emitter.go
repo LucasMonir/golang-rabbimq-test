@@ -11,20 +11,32 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func makeMessages(err bool) string {
+var severity string
+
+func makeRandom() *rand.Rand {
+	source := rand.NewSource(time.Now().Unix())
+	random := rand.New(source)
+	return random
+}
+
+func makeMessages(severity string) string {
 	errorMsg := []string{"Ooops, program crashed!", "The execution stopped!"}
 	infoMsg := []string{"Excecuton running properly!", "Program working fine!"}
 
-	source := rand.NewSource(time.Now().Unix())
-	random := rand.New(source)
+	random := makeRandom()
 
-	random.Intn(len(errorMsg))
-
-	if err {
+	if severity == "error" {
 		return errorMsg[random.Intn(len(errorMsg))]
 	}
 
 	return infoMsg[random.Intn(len(infoMsg))]
+}
+
+func makeSeverity() string {
+	severities := []string{"info", "error"}
+	random := makeRandom()
+
+	return severities[random.Intn(len(severities))]
 }
 
 func failOnError(err error, msg string) {
@@ -55,10 +67,10 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
+	severity = severityFrom(os.Args)
 	body := bodyFrom(os.Args)
 
-	err = ch.PublishWithContext(ctx, "logs_direct", severityFrom(os.Args), false, false, amqp.Publishing{
+	err = ch.PublishWithContext(ctx, "logs_direct", severity, false, false, amqp.Publishing{
 		ContentType: "text/plain",
 		Body:        []byte(body),
 	})
@@ -69,21 +81,25 @@ func main() {
 }
 
 func bodyFrom(args []string) string {
-	var s string
+	var body string
+
 	if (len(args) < 3) || os.Args[2] == "" {
-		s = "info"
+		body = makeMessages(severity)
+		print("a")
 	} else {
-		s = strings.Join(args[2:], " ")
+		body = strings.Join(args[2:], " ")
 	}
-	return s
+
+	return body
 }
 
 func severityFrom(args []string) string {
 	var s string
 	if (len(args) < 2) || os.Args[1] == "" {
-		s = "info"
+		s = makeSeverity()
 	} else {
 		s = os.Args[1]
 	}
+
 	return s
 }
