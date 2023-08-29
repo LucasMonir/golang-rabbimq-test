@@ -3,12 +3,29 @@ package main
 import (
 	"context"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+func makeMessages(err bool) string {
+	errorMsg := []string{"Ooops, program crashed!", "The execution stopped!"}
+	infoMsg := []string{"Excecuton running properly!", "Program working fine!"}
+
+	source := rand.NewSource(time.Now().Unix())
+	random := rand.New(source)
+
+	random.Intn(len(errorMsg))
+
+	if err {
+		return errorMsg[random.Intn(len(errorMsg))]
+	}
+
+	return infoMsg[random.Intn(len(infoMsg))]
+}
 
 func failOnError(err error, msg string) {
 	if err != nil {
@@ -54,7 +71,7 @@ func main() {
 func bodyFrom(args []string) string {
 	var s string
 	if (len(args) < 3) || os.Args[2] == "" {
-		s = "hello"
+		s = "info"
 	} else {
 		s = strings.Join(args[2:], " ")
 	}
